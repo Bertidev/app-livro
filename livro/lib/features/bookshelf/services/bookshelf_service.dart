@@ -7,9 +7,7 @@ class BookshelfService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  /// Adiciona um livro à estante do usuário logado ou atualiza seu status.
   Future<void> addBookToShelf(Book book, String status, BuildContext context) async {
-    // Pega o usuário atual. Se não houver, exibe um erro e interrompe a função.
     User? currentUser = _auth.currentUser;
     if (currentUser == null) {
       if (!context.mounted) return;
@@ -20,19 +18,20 @@ class BookshelfService {
     }
 
     try {
-      // O caminho no Firestore será: users -> [ID do usuário] -> bookshelf -> [ID do livro]
       await _firestore
           .collection('users')
           .doc(currentUser.uid)
           .collection('bookshelf')
-          .doc(book.id) // Usamos o ID do livro do Google para evitar duplicatas
+          .doc(book.id)
           .set({
             'title': book.title,
             'authors': book.authors,
-            'thumbnailUrl': book.thumbnailUrl,
+            'thumbnailUrl': book.thumbnailUrl, // MUDANÇA AQUI
             'description': book.description,
-            'status': status, // 'Quero Ler', 'Lendo' ou 'Lido'
+            'status': status,
             'addedAt': Timestamp.now(),
+            'pageCount': book.pageCount,
+            'currentPage': 0,
           });
       
       if (!context.mounted) return;
@@ -54,24 +53,123 @@ class BookshelfService {
     }
   }
 
-  /// Retorna uma Stream com a lista de livros da estante do usuário para atualizações em tempo real.
   Stream<List<Book>> getBookshelfStream() {
     User? currentUser = _auth.currentUser;
     if (currentUser == null) {
-      // Retorna uma stream vazia se o usuário não estiver logado
       return Stream.value([]);
     }
 
-    // Ouve as mudanças na subcoleção 'bookshelf' do usuário
     return _firestore
         .collection('users')
         .doc(currentUser.uid)
         .collection('bookshelf')
-        .orderBy('addedAt', descending: true) // Ordena pelos mais recentes
-        .snapshots() // Isso nos dá uma stream de atualizações em tempo real
+        .orderBy('addedAt', descending: true)
+        .snapshots()
         .map((snapshot) {
-      // Para cada atualização, mapeia os documentos para uma lista de objetos Book
       return snapshot.docs.map((doc) => Book.fromFirestore(doc)).toList();
     });
+  }
+
+  Future<void> removeBookFromShelf(String bookId, BuildContext context) async {
+    User? currentUser = _auth.currentUser;
+    if (currentUser == null) return;
+
+    try {
+      await _firestore
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('bookshelf')
+          .doc(bookId)
+          .delete();
+
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Livro removido da sua estante.'),
+          backgroundColor: Colors.blueGrey,
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro ao remover o livro: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<String?> getBookStatus(String bookId) async {
+    User? currentUser = _auth.currentUser;
+    if (currentUser == null) return null;
+
+    final docSnapshot = await _firestore
+        .collection('users')
+        .doc(currentUser.uid)
+        .collection('bookshelf')
+        .doc(bookId)
+        .get();
+
+    if (docSnapshot.exists) {
+      return docSnapshot.data()?['status'];
+    }
+    return null;
+  }
+  
+  Future<void> updateBookProgress(String bookId, {int? currentPage, int? pageCount}) async {
+    User? currentUser = _auth.currentUser;
+    if (currentUser == null) return;
+
+    final Map<String, dynamic> dataToUpdate = {};
+    if (currentPage != null) {
+      dataToUpdate['currentPage'] = currentPage;
+    }
+    if (pageCount != null) {
+      dataToUpdate['pageCount'] = pageCount;
+    }
+
+    if (dataToUpdate.isEmpty) return;
+
+    await _firestore
+        .collection('users')
+        .doc(currentUser.uid)
+        .collection('bookshelf')
+        .doc(bookId)
+        .update(dataToUpdate);
+  }
+
+  Future<void> rateBook(String bookId, int rating, String review, BuildContext context) async {
+    User? currentUser = _auth.currentUser;
+    if (currentUser == null) return;
+
+    try {
+      await _firestore
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('bookshelf')
+          .doc(bookId)
+          .update({
+            'rating': rating,
+            'review': review,
+            'ratedAt': Timestamp.now(),
+          });
+
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Sua avaliação foi salva com sucesso!'),
+          backgroundColor: Colors.green[600],
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro ao salvar sua avaliação: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:livro/core/models/book_model.dart';
-import 'package:livro/features/search/services/book_service.dart';
 import 'package:livro/features/search/screens/book_details_screen.dart';
+import 'package:livro/features/search/services/book_service.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -33,10 +33,12 @@ class _SearchScreenState extends State<SearchScreen> {
 
     final results = await _bookService.searchBooks(query);
 
-    setState(() {
-      _searchResults = results;
-      _isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _searchResults = results;
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -81,10 +83,7 @@ class _SearchScreenState extends State<SearchScreen> {
           title: Text(book.title),
           subtitle: Text(book.authors.join(', ')),
           onTap: () {
-            // Esconde o teclado antes de navegar
             FocusScope.of(context).unfocus();
-
-            // Navega para a tela de detalhes, passando o objeto 'book'
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (context) => BookDetailsScreen(book: book),

@@ -9,18 +9,17 @@ class BookService {
     if (query.isEmpty) {
       return [];
     }
-
-    final response = await http.get(Uri.parse('$_baseUrl?q=$query'));
+    
+    final response = await http.get(Uri.parse('$_baseUrl?q=$query&maxResults=20'));
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
+      
       if (data['items'] != null) {
         final List<dynamic> items = data['items'];
-        // Converte a lista de JSON em uma lista de objetos Book
         return items.map((item) => Book.fromJson(item)).toList();
       }
     }
-    // Se a busca falhar ou não retornar nada, retorna uma lista vazia
     return [];
   }
 }

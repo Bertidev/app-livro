@@ -53,6 +53,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (user != null && mounted) {
         // A navegação agora será automática por causa do AuthGate,
         // então não precisamos fazer nada aqui.
+        Navigator.of(context).pop();
         print("CADASTRO REALIZADO COM SUCESSO! User ID: ${user.uid}");
       }
     } finally {
@@ -117,6 +118,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 decoration: const InputDecoration(
                   prefixIcon: Icon(Icons.lock_outline),
                   labelText: 'Senha',
+                  helperText: 'A senha deve ter no mínimo 6 caracteres.',
                 ),
               ),
               const SizedBox(height: 32),
@@ -138,7 +140,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const Text('Já tem uma conta?'),
                   TextButton(
                     onPressed: () {
-                      // TODO: Navegar para a tela de Login
+                      Navigator.of(context).pop();
                     },
                     child: const Text('Faça Login'),
                   ),

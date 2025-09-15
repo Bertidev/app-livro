@@ -5,19 +5,27 @@ class Book {
   final String title;
   final List<String> authors;
   final String description;
-  final String thumbnailUrl;
-  final String? status; // Campo opcional para o status na estante
+  final String thumbnailUrl; // VOLTAMOS para a URL completa
+  final String? status;
+  final int? pageCount;
+  final int? currentPage;
+  final int? rating;
+  final String? review;
 
   Book({
     required this.id,
     required this.title,
     required this.authors,
     required this.description,
-    required this.thumbnailUrl,
-    this.status, // Adicionado ao construtor
+    required this.thumbnailUrl, // VOLTAMOS para a URL
+    this.status,
+    this.pageCount,
+    this.currentPage,
+    this.rating,
+    this.review,
   });
 
-  // Factory constructor para criar um Book a partir do JSON da API do Google
+  // Factory REESCRITO para o JSON da API do Google Books
   factory Book.fromJson(Map<String, dynamic> json) {
     final volumeInfo = json['volumeInfo'] ?? {};
     return Book(
@@ -28,21 +36,26 @@ class Book {
           : ['Autor Desconhecido'],
       description: volumeInfo['description'] ?? 'Sem descrição.',
       thumbnailUrl: volumeInfo['imageLinks']?['thumbnail'] ?? '',
+      pageCount: volumeInfo['pageCount'],
     );
   }
 
-  // NOVO: Factory constructor para criar um Book a partir de um documento do Firestore
+  // Factory do Firestore ATUALIZADO para ler thumbnailUrl
   factory Book.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     return Book(
-      id: doc.id, // O ID do documento é o ID do livro
+      id: doc.id,
       title: data['title'] ?? 'Título Desconhecido',
       authors: data['authors'] != null
           ? List<String>.from(data['authors'])
           : ['Autor Desconhecido'],
       description: data['description'] ?? 'Sem descrição.',
-      thumbnailUrl: data['thumbnailUrl'] ?? '',
-      status: data['status'], // Pega o status do Firestore
+      thumbnailUrl: data['thumbnailUrl'] ?? '', // Lendo a URL
+      status: data['status'],
+      pageCount: data['pageCount'],
+      currentPage: data['currentPage'],
+      rating: data['rating'],
+      review: data['review'],
     );
   }
 }

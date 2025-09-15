@@ -79,4 +79,14 @@ class AuthService {
     }
     return null;
   }
+
+    /// Atualiza a URL da foto de perfil do usuário no Firestore.
+  Future<void> updateUserProfilePicture(String photoUrl) async {
+    User? currentUser = _auth.currentUser;
+    if (currentUser == null) return;
+
+    await _firestore.collection('users').doc(currentUser.uid).update({
+      'photoUrl': photoUrl,
+    });
+  }
 }
