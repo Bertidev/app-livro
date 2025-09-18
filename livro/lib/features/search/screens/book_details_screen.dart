@@ -17,6 +17,10 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
   Book? _shelfBook;
   bool _isLoadingStatus = true;
 
+  // IMPORTANTE: Como a API do Google já retorna as categorias na busca,
+  // não precisamos mais daquela segunda chamada de API.
+  // O código fica mais simples, como estava antes.
+
   @override
   void initState() {
     super.initState();
@@ -131,6 +135,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              // --- CAPA, TÍTULO E AUTOR ---
               SizedBox(
                 height: screenSize.height * 0.35,
                 child: widget.book.thumbnailUrl.isNotEmpty
@@ -150,6 +155,25 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
               Text(widget.book.title, textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               Text(widget.book.authors.join(', '), textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Theme.of(context).textTheme.bodySmall?.color)),
+              
+              // ===== NOVA SEÇÃO DE CATEGORIAS =====
+              if (widget.book.categories.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 8.0, // Espaçamento horizontal entre os chips
+                  runSpacing: 4.0, // Espaçamento vertical entre as linhas de chips
+                  alignment: WrapAlignment.center,
+                  children: widget.book.categories.map((category) {
+                    return Chip(
+                      label: Text(category),
+                      backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+                      labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSecondaryContainer),
+                    );
+                  }).toList(),
+                ),
+              ],
+              // ======================================
+              
               const SizedBox(height: 24),
               _isLoadingStatus
                   ? const Center(child: CircularProgressIndicator())

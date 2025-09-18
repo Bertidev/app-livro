@@ -10,13 +10,15 @@ class AuthService {
 
   // Método para cadastrar um novo usuário
   Future<User?> signUpWithEmailAndPassword(
-      String username, String email, String password, BuildContext context) async {
+    String username,
+    String email,
+    String password,
+    BuildContext context,
+  ) async {
     try {
       // 1. Criar o usuário no Firebase Authentication
-      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      UserCredential userCredential = await _auth
+          .createUserWithEmailAndPassword(email: email, password: password);
 
       User? user = userCredential.user;
 
@@ -29,7 +31,6 @@ class AuthService {
         });
       }
       return user;
-
     } on FirebaseAuthException catch (e) {
       // 3. Tratar erros de forma amigável
       String errorMessage;
@@ -42,13 +43,10 @@ class AuthService {
       } else {
         errorMessage = 'Ocorreu um erro. Tente novamente.';
       }
-      
+
       // Mostra uma mensagem de erro na tela
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(errorMessage),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
       );
     }
     return null;
@@ -56,7 +54,10 @@ class AuthService {
 
   // Método para fazer login
   Future<User?> signInWithEmailAndPassword(
-      String email, String password, BuildContext context) async {
+    String email,
+    String password,
+    BuildContext context,
+  ) async {
     try {
       UserCredential userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
@@ -66,21 +67,20 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       String errorMessage = 'Ocorreu um erro. Verifique suas credenciais.';
       // Códigos de erro comuns para login
-      if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
+      if (e.code == 'user-not-found' ||
+          e.code == 'wrong-password' ||
+          e.code == 'invalid-credential') {
         errorMessage = 'E-mail ou senha incorretos.';
       }
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(errorMessage),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
       );
     }
     return null;
   }
 
-    /// Atualiza a URL da foto de perfil do usuário no Firestore.
+  /// Atualiza a URL da foto de perfil do usuário no Firestore.
   Future<void> updateUserProfilePicture(String photoUrl) async {
     User? currentUser = _auth.currentUser;
     if (currentUser == null) return;
@@ -88,5 +88,21 @@ class AuthService {
     await _firestore.collection('users').doc(currentUser.uid).update({
       'photoUrl': photoUrl,
     });
+  }
+  
+  /// Salva a meta de leitura anual do usuário.
+  Future<void> setReadingGoal(int goal) async {
+    User? currentUser = _auth.currentUser;
+    if (currentUser == null) return;
+
+    final year = DateTime.now().year.toString();
+
+    // Usamos a notação de ponto para atualizar um campo dentro de um mapa
+    await _firestore.collection('users').doc(currentUser.uid).set(
+      {
+        'readingGoals': {year: goal},
+      },
+      SetOptions(merge: true),
+    ); // SetOptions(merge: true) garante que outros campos não sejam apagados
   }
 }

@@ -5,24 +5,28 @@ class Book {
   final String title;
   final List<String> authors;
   final String description;
-  final String thumbnailUrl; // VOLTAMOS para a URL completa
+  final String thumbnailUrl;
   final String? status;
   final int? pageCount;
   final int? currentPage;
   final int? rating;
   final String? review;
+  final List<String> categories;
+  final Timestamp? finishedAt;
 
   Book({
     required this.id,
     required this.title,
     required this.authors,
     required this.description,
-    required this.thumbnailUrl, // VOLTAMOS para a URL
+    required this.thumbnailUrl,
+    required this.categories,
     this.status,
     this.pageCount,
     this.currentPage,
     this.rating,
     this.review,
+    this.finishedAt,
   });
 
   // Factory REESCRITO para o JSON da API do Google Books
@@ -37,6 +41,11 @@ class Book {
       description: volumeInfo['description'] ?? 'Sem descrição.',
       thumbnailUrl: volumeInfo['imageLinks']?['thumbnail'] ?? '',
       pageCount: volumeInfo['pageCount'],
+      categories:
+          volumeInfo['categories'] !=
+              null // Pega as categorias da API
+          ? List<String>.from(volumeInfo['categories'])
+          : [], // Retorna uma lista vazia se não houver
     );
   }
 
@@ -54,8 +63,14 @@ class Book {
       status: data['status'],
       pageCount: data['pageCount'],
       currentPage: data['currentPage'],
+      categories:
+          data['categories'] !=
+              null // Lê as categorias do Firestore
+          ? List<String>.from(data['categories'])
+          : [],
       rating: data['rating'],
       review: data['review'],
+      finishedAt: data['finishedAt'],
     );
   }
 }
