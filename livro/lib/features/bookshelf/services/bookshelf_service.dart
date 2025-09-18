@@ -94,15 +94,17 @@ class BookshelfService {
   }
 
   /// Retorna uma Stream com a lista de livros da estante do usuário.
-  Stream<List<Book>> getBookshelfStream() {
-    User? currentUser = _auth.currentUser;
-    if (currentUser == null) {
+  Stream<List<Book>> getBookshelfStream({String? userId}) {
+    // Se nenhum ID for fornecido, usa o do usuário logado.
+    final targetUserId = userId ?? _auth.currentUser?.uid;
+
+    if (targetUserId == null) {
       return Stream.value([]);
     }
 
     return _firestore
         .collection('users')
-        .doc(currentUser.uid)
+        .doc(targetUserId) // Usa o ID do alvo
         .collection('bookshelf')
         .orderBy('addedAt', descending: true)
         .snapshots()

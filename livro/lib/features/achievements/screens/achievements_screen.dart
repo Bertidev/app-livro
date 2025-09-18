@@ -137,7 +137,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
 
     // Calcula o progresso para o próximo nível (apenas para conquistas baseadas em contagem de livros)
     double progress = 0;
-    String progressText = '${nextTier.description}';
+    String progressText = nextTier.description;
     if (achievement.id == 'VORACIOUS_READER') {
       final goal = int.parse(nextTier.description.split(' ')[1]);
       progress = (readBooksCount / goal).clamp(0.0, 1.0);

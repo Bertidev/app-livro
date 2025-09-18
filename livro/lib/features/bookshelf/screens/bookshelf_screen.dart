@@ -4,7 +4,13 @@ import 'package:livro/features/bookshelf/services/bookshelf_service.dart';
 import 'package:livro/features/search/screens/book_details_screen.dart';
 
 class BookshelfScreen extends StatefulWidget {
-  const BookshelfScreen({super.key});
+  // 1. Adicionamos um novo parâmetro para o índice da aba inicial
+  final int initialTabIndex;
+
+  const BookshelfScreen({
+    super.key,
+    this.initialTabIndex = 0, // O valor padrão será 0 (primeira aba)
+  });
 
   @override
   State<BookshelfScreen> createState() => _BookshelfScreenState();
@@ -17,7 +23,12 @@ class _BookshelfScreenState extends State<BookshelfScreen> with SingleTickerProv
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    // 2. Usamos o parâmetro para definir a aba inicial do controller
+    _tabController = TabController(
+      length: 3,
+      vsync: this,
+      initialIndex: widget.initialTabIndex,
+    );
   }
 
   @override

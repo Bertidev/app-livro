@@ -6,7 +6,10 @@ import 'package:livro/core/models/book_model.dart';
 import 'package:livro/core/services/storage_service.dart';
 import 'package:livro/features/achievements/screens/achievements_screen.dart';
 import 'package:livro/features/auth/services/auth_service.dart';
+import 'package:livro/features/bookshelf/screens/bookshelf_screen.dart';
 import 'package:livro/features/bookshelf/services/bookshelf_service.dart';
+import 'package:livro/features/profile/screens/follow_list_screen.dart';
+import 'package:livro/features/profile/services/follow_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -19,6 +22,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final StorageService _storageService = StorageService();
   final AuthService _authService = AuthService();
   final BookshelfService _bookshelfService = BookshelfService();
+  final FollowService _followService = FollowService();
   final User? currentUser = FirebaseAuth.instance.currentUser;
 
   /// Abre a galeria para o usuário escolher uma nova foto e faz o upload.
@@ -76,7 +80,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           IconButton(onPressed: () => FirebaseAuth.instance.signOut(), icon: const Icon(Icons.logout)),
         ],
       ),
-      // StreamBuilder principal que ouve os dados do documento do usuário (nome, foto, meta)
       body: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance.collection('users').doc(currentUser!.uid).snapshots(),
         builder: (context, userSnapshot) {
@@ -108,9 +111,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 16),
                   Text(username ?? 'Usuário', style: Theme.of(context).textTheme.headlineMedium),
                   Text(currentUser?.email ?? '', style: Theme.of(context).textTheme.bodyLarge),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildClickableFollowerStat(
+                        context,
+                        _followService.getFollowersCount(currentUser!.uid),
+                        'Seguidores',
+                        () => Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) => FollowListScreen(userId: currentUser!.uid, listType: 'followers'),
+                        )),
+                      ),
+                      const SizedBox(width: 32),
+                      _buildClickableFollowerStat(
+                        context,
+                        _followService.getFollowingCount(currentUser!.uid),
+                        'Seguindo',
+                        () => Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) => FollowListScreen(userId: currentUser!.uid, listType: 'following'),
+                        )),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 24),
                   
-                  // StreamBuilder aninhado que ouve os dados da estante (para as estatísticas)
                   StreamBuilder<List<Book>>(
                     stream: _bookshelfService.getBookshelfStream(),
                     builder: (context, bookshelfSnapshot) {
@@ -128,14 +153,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
-                              _buildStatCard('Lidos', readCount.toString()),
-                              _buildStatCard('Lendo', readingCount.toString()),
-                              _buildStatCard('Quero Ler', wantToReadCount.toString()),
+                              _buildStatCard(
+                                'Lidos',
+                                readCount.toString(),
+                                onTap: () {
+                                  Navigator.of(context).push(MaterialPageRoute(
+                                    builder: (context) => const BookshelfScreen(initialTabIndex: 2),
+                                  ));
+                                },
+                              ),
+                              _buildStatCard(
+                                'Lendo',
+                                readingCount.toString(),
+                                onTap: () {
+                                  Navigator.of(context).push(MaterialPageRoute(
+                                    builder: (context) => const BookshelfScreen(initialTabIndex: 1),
+                                  ));
+                                },
+                              ),
+                              _buildStatCard(
+                                'Quero Ler',
+                                wantToReadCount.toString(),
+                                onTap: () {
+                                  Navigator.of(context).push(MaterialPageRoute(
+                                    builder: (context) => const BookshelfScreen(initialTabIndex: 0),
+                                  ));
+                                },
+                              ),
                             ],
                           ),
                           const SizedBox(height: 16),
-
-                          // Botão para a tela de conquistas
                           ListTile(
                             leading: Icon(Icons.emoji_events_rounded, color: Colors.amber[700]),
                             title: const Text('Minhas Conquistas'),
@@ -147,8 +194,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             },
                           ),
                           const Divider(),
-                          
-                          // Seção do Desafio de Leitura Anual
                           _buildReadingChallengeSection(userData, allBooks),
                         ],
                       );
@@ -163,23 +208,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  /// Constrói um cartão de estatística.
-  Widget _buildStatCard(String title, String value) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).colorScheme.primary,
-          ),
+  /// Constrói os contadores clicáveis de Seguidores/Seguindo.
+  Widget _buildClickableFollowerStat(BuildContext context, Stream<int> stream, String label, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: StreamBuilder<int>(
+          stream: stream,
+          builder: (context, snapshot) {
+            final count = snapshot.data ?? 0;
+            return Column(
+              children: [
+                Text(count.toString(), style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                Text(label, style: Theme.of(context).textTheme.bodySmall),
+              ],
+            );
+          }
         ),
-        const SizedBox(height: 4),
-        Text(
-          title,
-          style: Theme.of(context).textTheme.bodyMedium,
+      ),
+    );
+  }
+
+  /// Constrói um cartão de estatística clicável.
+  Widget _buildStatCard(String title, String value, {required VoidCallback onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -210,7 +285,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Column(
       children: [
         ListTile(
-          title: Text('Desafio de Leitura ${DateTime.now().year}', style: Theme.of(context).textTheme.titleLarge),
+          title: Text('Desafio de Leitura $year', style: Theme.of(context).textTheme.titleLarge),
           subtitle: Text('Meta: $goal livros'),
           trailing: IconButton(icon: const Icon(Icons.edit), onPressed: () => _showSetGoalDialog(goal)),
         ),
@@ -230,7 +305,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         const SizedBox(height: 16),
         if (booksReadThisYear.isEmpty)
-          const Text('Comece a ler para preencher seu desafio!')
+          const Padding(
+            padding: EdgeInsets.only(bottom: 16.0),
+            child: Text('Comece a ler para preencher seu desafio!'),
+          )
         else
           Wrap(
             spacing: 8,
@@ -240,7 +318,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 width: 60,
                 child: book.thumbnailUrl.isNotEmpty
                   ? Image.network(book.thumbnailUrl, fit: BoxFit.cover)
-                  : Container(color: Colors.grey, child: const Icon(Icons.book, color: Colors.white)),
+                  : Container(
+                      height: 90,
+                      color: Colors.grey.shade300,
+                      child: const Icon(Icons.book, color: Colors.white),
+                    ),
               );
             }).toList(),
           ),

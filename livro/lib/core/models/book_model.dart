@@ -29,7 +29,7 @@ class Book {
     this.finishedAt,
   });
 
-  // Factory REESCRITO para o JSON da API do Google Books
+  // Factory para o JSON da API do Google Books
   factory Book.fromJson(Map<String, dynamic> json) {
     final volumeInfo = json['volumeInfo'] ?? {};
     return Book(
@@ -43,13 +43,13 @@ class Book {
       pageCount: volumeInfo['pageCount'],
       categories:
           volumeInfo['categories'] !=
-              null // Pega as categorias da API
+              null 
           ? List<String>.from(volumeInfo['categories'])
-          : [], // Retorna uma lista vazia se não houver
+          : [], 
     );
   }
 
-  // Factory do Firestore ATUALIZADO para ler thumbnailUrl
+  // Factory do Firestore
   factory Book.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     return Book(
@@ -59,13 +59,13 @@ class Book {
           ? List<String>.from(data['authors'])
           : ['Autor Desconhecido'],
       description: data['description'] ?? 'Sem descrição.',
-      thumbnailUrl: data['thumbnailUrl'] ?? '', // Lendo a URL
+      thumbnailUrl: data['thumbnailUrl'] ?? '', 
       status: data['status'],
       pageCount: data['pageCount'],
       currentPage: data['currentPage'],
       categories:
           data['categories'] !=
-              null // Lê as categorias do Firestore
+              null 
           ? List<String>.from(data['categories'])
           : [],
       rating: data['rating'],
