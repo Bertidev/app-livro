@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:livro/core/models/book_model.dart';
 import 'package:livro/features/bookshelf/services/bookshelf_service.dart';
+import 'package:livro/features/bookshelf/widgets/update_progress_dialog.dart';
 import 'package:livro/features/search/screens/book_details_screen.dart';
 
 class BookshelfScreen extends StatefulWidget {
-  // 1. Adicionamos um novo parâmetro para o índice da aba inicial
   final int initialTabIndex;
 
   const BookshelfScreen({
     super.key,
-    this.initialTabIndex = 0, // O valor padrão será 0 (primeira aba)
+    this.initialTabIndex = 0, // O valor padrão é a primeira aba
   });
 
   @override
@@ -23,7 +23,7 @@ class _BookshelfScreenState extends State<BookshelfScreen> with SingleTickerProv
   @override
   void initState() {
     super.initState();
-    // 2. Usamos o parâmetro para definir a aba inicial do controller
+    // Usa o parâmetro do widget para definir a aba inicial do controller
     _tabController = TabController(
       length: 3,
       vsync: this,
@@ -83,99 +83,26 @@ class _BookshelfScreenState extends State<BookshelfScreen> with SingleTickerProv
   }
 }
 
+/// Widget auxiliar para exibir a lista de livros em cada aba.
 class _BookListView extends StatelessWidget {
   final List<Book> books;
   const _BookListView({required this.books});
 
-  void _showUpdateProgressDialog(BuildContext context, Book book) {
-    final progressController = TextEditingController(text: book.currentPage?.toString() ?? '0');
-    final totalPagesController = TextEditingController(text: book.pageCount?.toString() ?? '');
-    
-    final bookshelfService = BookshelfService();
-    bool isPercentageMode = true;
-
-    showDialog(
+  /// Chama o diálogo reutilizável para atualizar o progresso.
+  void _showUpdateProgressDialog(BuildContext context, Book book) async {
+    final result = await showDialog<Map<String, int?>>(
       context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('Atualizar Progresso'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SegmentedButton<bool>(
-                      segments: const [
-                        ButtonSegment(value: true, label: Text('%')),
-                        ButtonSegment(value: false, label: Text('Pág.')),
-                      ],
-                      selected: {isPercentageMode},
-                      onSelectionChanged: (newSelection) {
-                        setState(() {
-                          isPercentageMode = newSelection.first;
-                          progressController.clear();
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: progressController,
-                      keyboardType: TextInputType.number,
-                      autofocus: true,
-                      decoration: InputDecoration(
-                        labelText: isPercentageMode ? 'Progresso em %' : 'Página atual',
-                        hintText: isPercentageMode ? 'Ex: 50' : 'Ex: 125',
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: totalPagesController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Total de páginas',
-                        hintText: 'Ex: 350',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancelar'),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    final progressValue = int.tryParse(progressController.text);
-                    final totalPages = int.tryParse(totalPagesController.text);
-                    int? newCurrentPage;
-
-                    if (progressValue != null && totalPages != null && totalPages > 0) {
-                      if (isPercentageMode) {
-                        newCurrentPage = (progressValue / 100 * totalPages).round();
-                      } else {
-                        newCurrentPage = progressValue;
-                      }
-                    } else if (progressValue != null && !isPercentageMode) {
-                        newCurrentPage = progressValue;
-                    }
-                    
-                    bookshelfService.updateBookProgress(
-                      book.id,
-                      currentPage: newCurrentPage,
-                      pageCount: totalPages,
-                    );
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Salvar'),
-                ),
-              ],
-            );
-          },
-        );
-      },
+      builder: (context) => UpdateProgressDialog(book: book),
     );
+
+    // Se o usuário salvou os dados no diálogo, o resultado não será nulo
+    if (result != null) {
+      BookshelfService().updateBookProgress(
+        book.id,
+        currentPage: result['currentPage'],
+        pageCount: result['pageCount'],
+      );
+    }
   }
 
   @override
@@ -191,6 +118,7 @@ class _BookListView extends StatelessWidget {
         Widget? trailing;
         Widget? subtitle;
 
+        // Lógica para a estante "Lendo"
         if (book.status == 'Lendo' && book.pageCount != null && book.pageCount! > 0) {
           final currentPage = book.currentPage ?? 0;
           final totalPages = book.pageCount!;
@@ -217,6 +145,7 @@ class _BookListView extends StatelessWidget {
             onPressed: () => _showUpdateProgressDialog(context, book),
           );
         } else {
+          // Comportamento padrão para as outras estantes
           subtitle = Text(book.authors.join(', '));
         }
 

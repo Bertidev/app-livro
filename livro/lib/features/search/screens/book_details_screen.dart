@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:livro/core/models/book_model.dart';
 import 'package:livro/features/bookshelf/services/bookshelf_service.dart';
+import 'package:livro/features/bookshelf/widgets/update_progress_dialog.dart';
 
 class BookDetailsScreen extends StatefulWidget {
   final Book book;
-
   const BookDetailsScreen({super.key, required this.book});
 
   @override
@@ -13,13 +13,8 @@ class BookDetailsScreen extends StatefulWidget {
 
 class _BookDetailsScreenState extends State<BookDetailsScreen> {
   final BookshelfService _bookshelfService = BookshelfService();
-  
   Book? _shelfBook;
   bool _isLoadingStatus = true;
-
-  // IMPORTANTE: Como a API do Google já retorna as categorias na busca,
-  // não precisamos mais daquela segunda chamada de API.
-  // O código fica mais simples, como estava antes.
 
   @override
   void initState() {
@@ -27,6 +22,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
     _fetchBookDataFromShelf();
   }
 
+  /// Ouve em tempo real as mudanças do livro na estante do usuário.
   Future<void> _fetchBookDataFromShelf() async {
     final bookStream = _bookshelfService.getBookshelfStream();
     bookStream.listen((books) {
@@ -35,7 +31,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
           try {
             _shelfBook = books.firstWhere((b) => b.id == widget.book.id);
           } catch (e) {
-            _shelfBook = null;
+            _shelfBook = null; // Livro não encontrado na estante
           }
           _isLoadingStatus = false;
         });
@@ -43,15 +39,40 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
     });
   }
 
+  /// Lida com o toque nos botões de estante, com lógica especial para "Lendo".
   Future<void> _handleShelfButtonTap(String status) async {
     final currentStatus = _shelfBook?.status;
+    
+    // Se o livro já tem este status, a ação é sempre remover.
     if (currentStatus == status) {
       await _bookshelfService.removeBookFromShelf(widget.book.id, context);
+      return;
+    }
+
+    // Se o status clicado for "Lendo", mostra o diálogo para inserir o progresso.
+    if (status == 'Lendo') {
+      final result = await showDialog<Map<String, int?>>(
+        context: context,
+        builder: (context) => UpdateProgressDialog(book: widget.book),
+      );
+
+      if (result != null) {
+        // Passa os dados do diálogo para o serviço
+        await _bookshelfService.addBookToShelf(
+          widget.book, 
+          'Lendo', 
+          context,
+          currentPage: result['currentPage'],
+          pageCount: result['pageCount'],
+        );
+      }
     } else {
+      // Para os outros status ("Quero Ler", "Lido"), adiciona diretamente.
       await _bookshelfService.addBookToShelf(widget.book, status, context);
     }
   }
   
+  /// Mostra o diálogo para o usuário avaliar o livro.
   void _showRatingDialog() {
     int currentRating = _shelfBook?.rating ?? 0;
     final reviewController = TextEditingController(text: _shelfBook?.review ?? '');
@@ -135,7 +156,6 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // --- CAPA, TÍTULO E AUTOR ---
               SizedBox(
                 height: screenSize.height * 0.35,
                 child: widget.book.thumbnailUrl.isNotEmpty
@@ -156,12 +176,11 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
               const SizedBox(height: 8),
               Text(widget.book.authors.join(', '), textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Theme.of(context).textTheme.bodySmall?.color)),
               
-              // ===== NOVA SEÇÃO DE CATEGORIAS =====
               if (widget.book.categories.isNotEmpty) ...[
                 const SizedBox(height: 16),
                 Wrap(
-                  spacing: 8.0, // Espaçamento horizontal entre os chips
-                  runSpacing: 4.0, // Espaçamento vertical entre as linhas de chips
+                  spacing: 8.0,
+                  runSpacing: 4.0,
                   alignment: WrapAlignment.center,
                   children: widget.book.categories.map((category) {
                     return Chip(
@@ -172,7 +191,6 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
                   }).toList(),
                 ),
               ],
-              // ======================================
               
               const SizedBox(height: 24),
               _isLoadingStatus
@@ -206,6 +224,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
     );
   }
   
+  /// Constrói a seção que mostra a avaliação do usuário.
   Widget _buildUserReviewSection() {
     return Column(
       children: [
@@ -238,6 +257,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
     );
   }
 
+  /// Constrói um dos três botões da estante, com estilo dinâmico.
   Widget _buildShelfButton(BuildContext context, {required IconData icon, required String label}) {
     final bool isActive = _shelfBook?.status == label;
     return Column(
